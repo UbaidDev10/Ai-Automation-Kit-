@@ -1,0 +1,11 @@
+.env.example
+*.log
+.DS_Store
+Thumbs.db
+n8n/workflows-backup/
+dashboard/.env.local
+dashboard/node_modules
+dashboard/.next
+scripts/
+config.bat
+node_modules

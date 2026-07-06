@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+:root {
+  /* Shell — sidebar & top bar */
+  --kit-sidebar-bg: #121826;
+  --kit-sidebar-border: #1e2d4a;
+  --kit-sidebar-text: #f1f5f9;
+  --kit-sidebar-muted: #8b9dc4;
+  --kit-sidebar-hover: #1a2338;
+  --kit-sidebar-active: #2563eb;
+
+  /* Content area */
+  --kit-bg: #edf1f7;
+  --kit-surface: #ffffff;
+  --kit-surface-raised: #f4f7fb;
+  --kit-border: #d8e0eb;
+  --kit-text: #0f172a;
+  --kit-muted: #64748b;
+
+  /* Brand accent */
+  --kit-accent: #2563eb;
+  --kit-accent-hover: #1d4ed8;
+  --kit-accent-soft: #eff6ff;
+
+  /* Status */
+  --kit-success-bg: #ecfdf5;
+  --kit-success-text: #059669;
+  --kit-error-bg: #fef2f2;
+  --kit-error-text: #dc2626;
+  --kit-warning-bg: #fffbeb;
+  --kit-warning-text: #d97706;
+  --kit-info-bg: #eff6ff;
+  --kit-info-text: #2563eb;
+
+  /* Elevation */
+  --kit-shadow: 0 1px 3px rgb(15 28 49 / 0.06);
+  --kit-shadow-md: 0 4px 16px rgb(15 28 49 / 0.09);
+  --kit-radius: 12px;
+  --kit-sidebar-w: 280px;
+}
+
+@theme inline {
+  --color-kit-bg: var(--kit-bg);
+  --color-kit-surface: var(--kit-surface);
+  --color-kit-surface-raised: var(--kit-surface-raised);
+  --color-kit-border: var(--kit-border);
+  --color-kit-text: var(--kit-text);
+  --color-kit-muted: var(--kit-muted);
+  --color-kit-accent: var(--kit-accent);
+  --color-kit-accent-hover: var(--kit-accent-hover);
+  --color-kit-accent-soft: var(--kit-accent-soft);
+  --color-kit-success-bg: var(--kit-success-bg);
+  --color-kit-success-text: var(--kit-success-text);
+  --color-kit-error-bg: var(--kit-error-bg);
+  --color-kit-error-text: var(--kit-error-text);
+  --color-kit-warning-bg: var(--kit-warning-bg);
+  --color-kit-warning-text: var(--kit-warning-text);
+  --color-kit-info-bg: var(--kit-info-bg);
+  --color-kit-info-text: var(--kit-info-text);
+  --color-kit-sidebar-bg: var(--kit-sidebar-bg);
+  --color-kit-sidebar-border: var(--kit-sidebar-border);
+  --color-kit-sidebar-text: var(--kit-sidebar-text);
+  --color-kit-sidebar-muted: var(--kit-sidebar-muted);
+  --color-kit-sidebar-hover: var(--kit-sidebar-hover);
+  --color-kit-sidebar-active: var(--kit-sidebar-active);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--kit-bg);
+  color: var(--kit-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.8125rem;
+  background: var(--kit-surface-raised);
+  border: 1px solid var(--kit-border);
+  border-radius: 0.375rem;
+  padding: 0.15em 0.4em;
+}
+
+/* ── Unified surface components ── */
+
+.kit-card,
+.kit-panel,
+.kit-metric,
+.kit-stat-card {
+  background: var(--kit-surface);
+  border: 1px solid var(--kit-border);
+  border-radius: var(--kit-radius);
+  box-shadow: var(--kit-shadow);
+}
+
+.kit-card-hover {
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.kit-card-hover:hover {
+  box-shadow: var(--kit-shadow-md);
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--kit-accent) 25%, var(--kit-border));
+}
+
+.kit-metric {
+  padding: 1.25rem 1.5rem;
+}
+
+.kit-stat-card {
+  overflow: hidden;
+}
+
+.kit-stat-accent {
+  height: 3px;
+  width: 100%;
+}
+
+.kit-table-head {
+  border-bottom: 1px solid var(--kit-border);
+  background: var(--kit-surface-raised);
+}
+
+.kit-link {
+  font-weight: 500;
+  color: var(--kit-accent);
+  transition: color 0.15s ease;
+}
+
+.kit-link:hover {
+  color: var(--kit-accent-hover);
+}
+
+.kit-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+
+.kit-icon-box--accent {
+  background: var(--kit-accent-soft);
+  color: var(--kit-accent);
+}
+
+.kit-icon-box--neutral {
+  background: var(--kit-surface-raised);
+  color: var(--kit-muted);
+}
+
+.kit-icon-box--success {
+  background: var(--kit-success-bg);
+  color: var(--kit-success-text);
+}
+
+.kit-icon-box--warning {
+  background: var(--kit-warning-bg);
+  color: var(--kit-warning-text);
+}
+
+.kit-icon-box--error {
+  background: var(--kit-error-bg);
+  color: var(--kit-error-text);
+}
+
+.kit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.kit-badge--shell {
+  border: 1px solid var(--kit-sidebar-border);
+  background: var(--kit-sidebar-hover);
+  color: var(--kit-sidebar-text);
+}
+
+.kit-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}

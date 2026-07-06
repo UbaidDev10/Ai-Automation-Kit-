@@ -1,0 +1,5 @@
+message,status,source,ai_summary,processed_at
+System health check,active,setup,,
+Client requested enterprise pricing quote,pending,website,,
+Sales inquiry: 50-user license,pending,email-campaign,,
+Completed onboarding call,done,sales,Team notified and follow-up scheduled.,2026-07-01 10:00

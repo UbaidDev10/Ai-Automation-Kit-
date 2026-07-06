@@ -1,0 +1,138 @@
+{
+  "name": "Kit Seed Google Sheet",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c1d2e3f4-a5b6-7890-cdef-1234567890ab",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { message: 'System health check', status: 'active', source: 'setup', ai_summary: '', processed_at: '' } },\n  { json: { message: 'Client requested enterprise pricing quote', status: 'pending', source: 'website', ai_summary: '', processed_at: '' } },\n  { json: { message: 'Sales inquiry: 50-user license', status: 'pending', source: 'email-campaign', ai_summary: '', processed_at: '' } },\n  { json: { message: 'Completed onboarding call', status: 'done', source: 'sales', ai_summary: 'Team notified and follow-up scheduled.', processed_at: '2026-07-01 10:00' } },\n];"
+      },
+      "id": "d2e3f4a5-b6c7-8901-def2-234567890abc",
+      "name": "Dummy Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.KIT_TEST_SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "status": "={{ $json.status }}",
+            "source": "={{ $json.source }}",
+            "ai_summary": "={{ $json.ai_summary }}",
+            "processed_at": "={{ $json.processed_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_summary",
+              "displayName": "ai_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4a5b6c7-d8e9-0123-f456-7890abcdef01",
+      "name": "Write Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [440, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Kit - Google Sheets"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Dummy Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dummy Data": {
+      "main": [
+        [
+          {
+            "node": "Write Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

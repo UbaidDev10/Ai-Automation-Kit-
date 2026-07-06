@@ -1,0 +1,286 @@
+{
+  "name": "Kit Main Automation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kit-dashboard/main-pipeline",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "c1000001-0001-4000-8000-000000000101",
+      "name": "Dashboard Run",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-280, 480],
+      "webhookId": "kit-dashboard-main-pipeline"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.body ?? $json;\nreturn [{\n  json: {\n    message: String(raw.message ?? 'Dashboard test run — client requested enterprise pricing quote').trim(),\n    status: String(raw.status ?? 'pending').trim().toLowerCase(),\n    source: String(raw.source ?? 'dashboard').trim()\n  }\n}];"
+      },
+      "id": "c1000002-0002-4000-8000-000000000102",
+      "name": "Format Dashboard Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-40, 480]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [{ "mode": "everyX", "value": 5, "unit": "minutes" }]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.KIT_TEST_SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "event": "rowAdded",
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRange",
+              "headerRow": 1,
+              "firstDataRow": 2
+            }
+          }
+        }
+      },
+      "id": "b1000001-0001-4000-8000-000000000001",
+      "name": "New Sheet Row",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [0, 320],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": { "name": "Kit - Google Sheets Trigger" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  const row = item.json;\n  const message = String(row.message ?? '').trim();\n  const source = String(row.source ?? '').trim();\n  const status = String(row.status ?? '').trim().toLowerCase();\n  const aiSummary = String(row.ai_summary ?? row.aiSummary ?? '').trim();\n\n  if (!message || message.toLowerCase() === 'message') continue;\n  if (status === 'done' || status === 'active') continue;\n\n  const isPending = status === 'pending';\n  const isStuckProcessing = status === 'processing' && !aiSummary;\n  if (!isPending && !isStuckProcessing) continue;\n\n  out.push({ json: { message, source, status, ai_summary: aiSummary } });\n}\n\nreturn out;"
+      },
+      "id": "b1000002-0002-4000-8000-000000000002",
+      "name": "Processable Rows Only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 320]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Write exactly 4 short sentences in plain English for a team update.\nDo not use labels like Subject, Message, Source, or Next Action.\nDo not use markdown, bullets, or special characters.\n\nRequest: {{ $json.message }}\nFrom: {{ $json.source }}"
+            }
+          ]
+        },
+        "simplify": true,
+        "jsonOutput": false,
+        "builtInTools": {
+          "googleSearch": false,
+          "urlContext": false,
+          "codeExecution": false
+        },
+        "options": { "includeMergedResponse": true }
+      },
+      "id": "b1000003-0003-4000-8000-000000000003",
+      "name": "Gemini Summary",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [520, 320],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 30000,
+      "continueOnFail": true,
+      "credentials": {
+        "googlePalmApi": { "name": "Kit - LLM" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractText(value) {\n  if (typeof value === 'string' && value.trim()) return value.trim();\n  if (Array.isArray(value)) {\n    for (const item of value) {\n      const found = extractText(item);\n      if (found) return found;\n    }\n    return '';\n  }\n  if (value && typeof value === 'object') {\n    if (typeof value.mergedResponse === 'string' && value.mergedResponse.trim()) return value.mergedResponse.trim();\n    if (typeof value.text === 'string' && value.text.trim()) return value.text.trim();\n    for (const key of ['content', 'parts', 'message', 'candidates']) {\n      const found = extractText(value[key]);\n      if (found) return found;\n    }\n  }\n  return '';\n}\n\nfunction plainEnglish(text) {\n  return String(text)\n    .replace(/^Subject:\\s*.+$/gim, '')\n    .replace(/^Next Action:\\s*.+$/gim, '')\n    .replace(/\\*+/g, '')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nconst row = $('Processable Rows Only').item.json;\nconst gemini = $input.first()?.json ?? {};\n\nlet raw = '';\nif (gemini.parts?.[0]?.text) raw = String(gemini.parts[0].text).trim();\nelse if (gemini.content?.parts?.[0]?.text) raw = String(gemini.content.parts[0].text).trim();\nelse if (typeof gemini.mergedResponse === 'string') raw = gemini.mergedResponse.trim();\nelse raw = extractText(gemini);\n\nconst summary = plainEnglish(raw) || `A new request was received about ${row.message} from ${row.source}.`;\nconst processedAt = new Intl.DateTimeFormat('sv-SE', {\n  timeZone: 'Asia/Karachi',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n  hour: '2-digit',\n  minute: '2-digit',\n  hour12: false,\n}).format(new Date()) + ' (UTC+5)';\n\nconst slackText = [\n  `New request from ${row.source}: ${row.message}`,\n  '',\n  summary,\n  '',\n  `Received at ${processedAt}.`,\n].join('\\n');\n\nconst emailBody = [\n  'Hello,',\n  '',\n  summary,\n  '',\n  `This request came from ${row.source} about \"${row.message}\".`,\n  `Processed at ${processedAt}.`,\n].join('\\n');\n\nreturn [{\n  json: {\n    rowMessage: row.message,\n    rowSource: row.source,\n    summary,\n    processedAt,\n    slackText,\n    emailSubject: `Update: ${row.message}`,\n    emailBody,\n    aiGenerated: Boolean(raw),\n  },\n}];"
+      },
+      "id": "b1000009-0009-4000-8000-000000000009",
+      "name": "Extract Gemini Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 320]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "row-message",
+              "name": "rowMessage",
+              "value": "={{ $json.rowMessage }}",
+              "type": "string"
+            },
+            {
+              "id": "row-source",
+              "name": "rowSource",
+              "value": "={{ $json.rowSource }}",
+              "type": "string"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "processed-at",
+              "name": "processedAt",
+              "value": "={{ $json.processedAt }}",
+              "type": "string"
+            },
+            {
+              "id": "slack-text",
+              "name": "slackText",
+              "value": "={{ $json.slackText }}",
+              "type": "string"
+            },
+            {
+              "id": "email-subject",
+              "name": "emailSubject",
+              "value": "={{ $json.emailSubject }}",
+              "type": "string"
+            },
+            {
+              "id": "email-body",
+              "name": "emailBody",
+              "value": "={{ $json.emailBody }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1000004-0004-4000-8000-000000000004",
+      "name": "Format Notifications",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [780, 320]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $env.KIT_SLACK_CHANNEL || '#general' }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.slackText }}",
+        "otherOptions": {
+          "mrkdwn": false,
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "b1000005-0005-4000-8000-000000000005",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [1040, 320],
+      "continueOnFail": true,
+      "credentials": {
+        "slackOAuth2Api": { "name": "Kit - Slack" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $env.KIT_NOTIFY_EMAIL }}",
+        "subject": "={{ $('Format Notifications').item.json.emailSubject }}",
+        "emailType": "text",
+        "message": "={{ $('Format Notifications').item.json.emailBody }}",
+        "options": {}
+      },
+      "id": "b1000006-0006-4000-8000-000000000006",
+      "name": "Send Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1300, 320],
+      "continueOnFail": true,
+      "credentials": {
+        "gmailOAuth2": { "name": "Kit - Gmail" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.KIT_TEST_SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $('Format Notifications').item.json.rowMessage }}",
+            "source": "={{ $('Format Notifications').item.json.rowSource }}",
+            "status": "done",
+            "ai_summary": "={{ $('Format Notifications').item.json.summary }}",
+            "processed_at": "={{ $('Format Notifications').item.json.processedAt }}"
+          },
+          "matchingColumns": ["message", "source"],
+          "schema": [
+            { "id": "message", "displayName": "message", "type": "string", "canBeUsedToMatch": true },
+            { "id": "status", "displayName": "status", "type": "string", "canBeUsedToMatch": true },
+            { "id": "source", "displayName": "source", "type": "string", "canBeUsedToMatch": true },
+            { "id": "ai_summary", "displayName": "ai_summary", "type": "string", "canBeUsedToMatch": false },
+            { "id": "processed_at", "displayName": "processed_at", "type": "string", "canBeUsedToMatch": false }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1000007-0007-4000-8000-000000000007",
+      "name": "Update Sheet Record",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1560, 320],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "name": "Kit - Google Sheets" }
+      }
+    }
+  ],
+  "connections": {
+    "Dashboard Run": { "main": [[{ "node": "Format Dashboard Row", "type": "main", "index": 0 }]] },
+    "Format Dashboard Row": { "main": [[{ "node": "Processable Rows Only", "type": "main", "index": 0 }]] },
+    "New Sheet Row": { "main": [[{ "node": "Processable Rows Only", "type": "main", "index": 0 }]] },
+    "Processable Rows Only": { "main": [[{ "node": "Gemini Summary", "type": "main", "index": 0 }]] },
+    "Gemini Summary": { "main": [[{ "node": "Extract Gemini Text", "type": "main", "index": 0 }]] },
+    "Extract Gemini Text": { "main": [[{ "node": "Format Notifications", "type": "main", "index": 0 }]] },
+    "Format Notifications": { "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]] },
+    "Post to Slack": { "main": [[{ "node": "Send Gmail", "type": "main", "index": 0 }]] },
+    "Send Gmail": { "main": [[{ "node": "Update Sheet Record", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}
